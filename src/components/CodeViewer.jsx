@@ -1,62 +1,89 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { FaCopy, FaExpand, FaPalette, FaCheck } from "react-icons/fa";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { dracula, vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { FaCopy, FaExpand, FaPalette, FaTimes } from "react-icons/fa";
+import {
+  dracula,
+  vscDarkPlus,
+  nightOwl,
+  oneDark
+} from "react-syntax-highlighter/dist/esm/styles/prism";
 
-export default function CodeViewer({ content, onClose }) {
-  const THEMES = { "VS Code Dark": vscDarkPlus, Dracula: dracula };
-  const [themeName, setThemeName] = useState("VS Code Dark");
-  const [openSelector, setOpenSelector] = useState(false);
+export default function CodeViewer({ content }) {
+  const THEMES = {
+    Dracula: dracula,
+    "VS Code Dark": vscDarkPlus,
+    "Night Owl": nightOwl,
+    "One Dark": oneDark
+  };
+
+  const [theme, setTheme] = useState("Dracula");
   const [zoom, setZoom] = useState(1);
-
-  function copyCode() { navigator.clipboard.writeText(content || "").catch(() => {}); }
-  function toggleFullscreen() {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
-    else document.exitFullscreen().catch(()=>{});
-  }
-
-  const fontSize = Math.max(10, Math.round(14 * zoom));
-
-  // Re-render on zoom change without needing theme change
-  useEffect(() => {}, [zoom]);
+  const [open, setOpen] = useState(false);
 
   return (
-    <div style={{ position:"relative", height:"100%", display:"flex", flexDirection:"column" }}>
-      {/* Toolbar now scrolls with code */}
-      <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-        <div className="theme-picker icon-btn" onClick={()=>setOpenSelector(!openSelector)}><FaPalette/></div>
-        <div className="icon-btn" onClick={copyCode} title="Copy code"><FaCopy/></div>
-        <div className="icon-btn" onClick={toggleFullscreen} title="Fullscreen"><FaExpand/></div>
-        {onClose && <div className="icon-btn" onClick={onClose} title="Close tab"><FaTimes/></div>}
+    <div className="flex flex-col h-full">
+      {/* Toolbar */}
+      <div className="flex gap-2 mb-2">
+        <Icon onClick={() => setOpen(!open)}><FaPalette /></Icon>
+        <Icon onClick={() => navigator.clipboard.writeText(content || "")}><FaCopy /></Icon>
+        <Icon onClick={() => document.documentElement.requestFullscreen()}><FaExpand /></Icon>
       </div>
 
-      {openSelector && (
-        <div style={{ marginBottom: 8, background:"#071021", border:"1px solid rgba(255,255,255,0.04)", borderRadius:8, padding:8 }}>
-          <div style={{ color:"#9fb6d8", fontSize:13, marginBottom:6 }}>Select theme</div>
-          {Object.keys(THEMES).map(t=>(
-            <div key={t} className="tree-item" style={{padding:"8px 10px", borderRadius:6, cursor:"pointer"}} onClick={()=>{setThemeName(t); setOpenSelector(false);}}>{t}</div>
+      {/* Theme selector */}
+      {open && (
+        <div className="mb-2 bg-[#071021] border border-gray-700 rounded">
+          {Object.keys(THEMES).map(t => (
+            <div
+              key={t}
+              onClick={() => { setTheme(t); setOpen(false); }}
+              className={`flex items-center justify-between px-3 py-2 cursor-pointer text-sm
+                ${t === theme ? "bg-blue-600 text-white" : "hover:bg-gray-800"}`}
+            >
+              {t}
+              {t === theme && <FaCheck />}
+            </div>
           ))}
         </div>
       )}
 
-      <div style={{ flex:1, overflow:"auto" }} className="code-wrap">
+      {/* Code */}
+      <div className="flex-1 overflow-auto">
         <SyntaxHighlighter
+          PreTag="div"
           language="python"
-          style={THEMES[themeName]}
-          customStyle={{ background:"transparent", fontSize:`${fontSize}px`, borderRadius:8, padding:12, lineHeight:1.45, whiteSpace:"pre-wrap", wordBreak:"break-word" }}
-          wrapLongLines
+          style={THEMES[theme]}
           showLineNumbers
+          wrapLongLines
+          customStyle={{
+            background: "transparent",
+            fontSize: `${14 * zoom}px`,
+            lineHeight: 1.45,
+            margin: 0,
+            padding: 12
+          }}
         >
-          {content || "# Select a .py file from left panel"}
+          {content || "# Select a file"}
         </SyntaxHighlighter>
       </div>
 
-      {/* Zoom controls scroll with code */}
-      <div style={{ display:"flex", gap:8, marginTop:8, alignItems:"center" }}>
-        <button onClick={()=>setZoom(z=>Math.max(0.6, +(z-0.1).toFixed(2)))}>A-</button>
-        <div style={{ color:"#cfe8ff" }}>{Math.round(zoom*100)}%</div>
-        <button onClick={()=>setZoom(z=>(+(z+0.1).toFixed(2)))}>A+</button>
+      {/* Zoom */}
+      <div className="flex gap-3 mt-2">
+        <Btn onClick={() => setZoom(z => Math.max(0.6, z - 0.1))}>A-</Btn>
+        <span className="text-cyan-400">{Math.round(zoom * 100)}%</span>
+        <Btn onClick={() => setZoom(z => z + 0.1)}>A+</Btn>
       </div>
     </div>
   );
 }
+
+const Icon = ({ children, onClick }) => (
+  <button onClick={onClick} className="p-2 bg-gray-800 hover:bg-gray-700 rounded text-cyan-400">
+    {children}
+  </button>
+);
+
+const Btn = ({ children, onClick }) => (
+  <button onClick={onClick} className="px-2 py-1 bg-gray-800 rounded">
+    {children}
+  </button>
+);

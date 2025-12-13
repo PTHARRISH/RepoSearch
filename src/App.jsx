@@ -1,25 +1,23 @@
 import { useEffect, useState } from "react";
 import CodeViewer from "./components/CodeViewer";
 import FolderTree from "./components/FolderTree";
-import "./index.css";
+import RepoHeader from "./components/RepoHeader";
 
 export default function App() {
   const [root, setRoot] = useState(null);
+  const [repoInput, setRepoInput] = useState("PTHARRISH/Python-Notes");
+  const [search, setSearch] = useState("");
   const [tabs, setTabs] = useState([]);
   const [active, setActive] = useState(0);
+  const [showSidebar, setShowSidebar] = useState(true);
 
-  // search inside folder tree
-  const [searchText, setSearchText] = useState("");
+  async function loadRepo() {
+    if (!repoInput.includes("/")) {
+      alert("Use format: username/repository");
+      return;
+    }
 
-  // repo name state
-  const [repoOwner, setRepoOwner] = useState("PTHARRISH");
-  const [repoName, setRepoName] = useState("Python-Notes");
-
-  // single combined input field
-  const [repoInput, setRepoInput] = useState("PTHARRISH/Python-Notes");
-
-  // Load repo contents
-  async function loadRepo(owner, repo) {
+    const [owner, repo] = repoInput.split("/");
     try {
       const res = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/contents/`
@@ -31,141 +29,80 @@ export default function App() {
         setTabs([]);
         setActive(0);
       } else {
-        alert("Repository not found!");
+        alert("Repository not found");
       }
-    } catch (e) {
-      alert("Failed to load repository.");
+    } catch {
+      alert("Failed to load repository");
     }
   }
 
-  // initial load
   useEffect(() => {
-    loadRepo(repoOwner, repoName);
+    loadRepo();
   }, []);
 
-  async function handleSelect(item) {
+  async function openFile(item) {
     if (item.type === "dir") return;
-
-    const exists = tabs.findIndex((t) => t.path === item.path);
-    if (exists !== -1) {
-      setActive(exists);
-      return;
-    }
 
     const res = await fetch(item.download_url);
     const code = await res.text();
 
-    const newTab = { name: item.name, path: item.path, code };
-    setTabs([...tabs, newTab]);
+    setTabs(t => [...t, { path: item.path, code }]);
     setActive(tabs.length);
   }
 
-  function closeTab(index) {
-    const updated = tabs.filter((_, i) => i !== index);
-    setTabs(updated);
-    if (active >= updated.length) setActive(updated.length - 1);
-  }
-
   return (
-    <div className="app">
-      {/* LEFT SIDEBAR */}
-      <div className="sidebar">
+    <div className="flex flex-col h-screen bg-[#011627] text-white">
+      {/* HEADER */}
+      <RepoHeader onToggleSidebar={() => setShowSidebar(s => !s)} />
 
-        {/* 🔎 SINGLE REPO INPUT FIELD */}
-        <div style={{ marginBottom: "12px" }}>
-          <input
-            type="text"
-            placeholder="username/repository"
-            value={repoInput}
-            onChange={(e) => setRepoInput(e.target.value)}
-            className="search-input"
-            style={{ marginBottom: "6px" }}
-          />
+      {/* BODY */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* SIDEBAR */}
+        {showSidebar && (
+          <div className="w-80 bg-[#0e1116] p-3 border-r border-gray-800 overflow-y-auto">
 
-          <button
-            style={{
-              width: "100%",
-              padding: "8px",
-              background: "#238636",
-              borderRadius: "6px",
-              border: "none",
-              color: "white",
-              marginTop: "4px",
-              cursor: "pointer"
-            }}
-            onClick={() => {
-              if (!repoInput.includes("/")) {
-                alert("Enter in format: username/repository");
-                return;
-              }
-
-              const [owner, repo] = repoInput.split("/");
-
-              setRepoOwner(owner);
-              setRepoName(repo);
-
-              loadRepo(owner, repo);
-            }}
-          >
-            Load Repository
-          </button>
-        </div>
-
-        {/* 🔍 SEARCH INSIDE FOLDER TREE */}
-        <input
-          className="search-input"
-          type="text"
-          placeholder="Search files..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-        />
-
-        {/* Folder Tree */}
-        {root ? (
-          <FolderTree
-            root={root}
-            search={searchText}
-            repoOwner={repoOwner}
-            repoName={repoName}
-            onFileClick={handleSelect}
-          />
-        ) : (
-          <p>Loading repository...</p>
-        )}
-      </div>
-
-      {/* RIGHT SIDE VIEWER */}
-      <div className="main">
-        <div className="tabs">
-          {tabs.map((tab, i) => (
-            <div
-              key={i}
-              className={`tab ${i === active ? "active" : ""}`}
-              onClick={() => setActive(i)}
-            >
-              {tab.name}
-              <span
-                className="close"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeTab(i);
-                }}
+            {/* Repo Search */}
+            <div className="mb-3">
+              <input
+                value={repoInput}
+                onChange={e => setRepoInput(e.target.value)}
+                placeholder="username/repository"
+                className="w-full px-3 py-2 mb-2 rounded bg-[#0b1220] border border-gray-800"
+              />
+              <button
+                onClick={loadRepo}
+                className="w-full py-2 rounded bg-green-600 hover:bg-green-700"
               >
-                ×
-              </span>
+                Load Repository
+              </button>
             </div>
-          ))}
-        </div>
 
-        <div className="viewer">
-          {tabs.length > 0 ? (
-            <CodeViewer
-              key={tabs[active]?.path}
-              content={tabs[active].code}
+            {/* File Search */}
+            <input
+              className="w-full px-3 py-2 mb-3 rounded bg-[#0b1220] border border-gray-800"
+              placeholder="Search files..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
             />
+
+            {/* Folder Tree */}
+            {root && (
+              <FolderTree
+                root={root}
+                search={search}
+                onFileClick={openFile}
+              />
+            )}
+          </div>
+        )}
+
+        {/* MAIN */}
+        <div className="flex-1 p-3 overflow-hidden">
+          {tabs.length ? (
+            <CodeViewer content={tabs[active].code} />
           ) : (
-            <div style={{ color: "#7a8fa6", fontStyle: "italic" }}>
-              Open a file to view its code
+            <div className="text-gray-500 italic">
+              Open a file to view code
             </div>
           )}
         </div>

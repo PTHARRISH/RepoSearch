@@ -4,89 +4,71 @@ import { FaFile, FaFolder, FaFolderOpen } from "react-icons/fa";
 
 function highlight(text, search) {
   if (!search) return text;
-  const index = text.toLowerCase().indexOf(search.toLowerCase());
-  if (index === -1) return text;
-
+  const i = text.toLowerCase().indexOf(search.toLowerCase());
+  if (i === -1) return text;
   return (
     <>
-      {text.substring(0, index)}
-      <span style={{ color: "#58a6ff", fontWeight: 600 }}>
-        {text.substring(index, index + search.length)}
+      {text.slice(0, i)}
+      <span className="text-blue-400 font-semibold">
+        {text.slice(i, i + search.length)}
       </span>
-      {text.substring(index + search.length)}
+      {text.slice(i + search.length)}
     </>
   );
 }
 
 function TreeLeaf({ item, search, onFileClick }) {
   const [open, setOpen] = useState(false);
-  const [children, setChildren] = useState(item.children || null);
-  const [loading, setLoading] = useState(false);
-
-  const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
+  const [children, setChildren] = useState(null);
 
   async function toggle() {
     if (item.type !== "dir") return;
-
     if (!children) {
-      setLoading(true);
       const res = await fetch(item.url);
-      const json = await res.json();
-      setChildren(json);
-      setLoading(false);
+      setChildren(await res.json());
       setOpen(true);
-      return;
-    }
-
-    setOpen(!open);
+    } else setOpen(!open);
   }
 
-  const filteredChildren = useMemo(() => {
-    if (!children) return null;
-    if (!search) return children;
-
-    return children.filter((child) =>
-      child.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = useMemo(() => {
+    if (!children || !search) return children;
+    return children.filter(c =>
+      c.name.toLowerCase().includes(search.toLowerCase())
     );
   }, [children, search]);
 
-  const shouldShow =
-    !search ||
-    matchesSearch ||
-    (filteredChildren && filteredChildren.length > 0);
-
-  if (!shouldShow) return null;
+  if (
+    search &&
+    !item.name.toLowerCase().includes(search.toLowerCase()) &&
+    (!filtered || !filtered.length)
+  ) return null;
 
   return (
-    <div>
+    <div className="flex flex-col">
       <div
-        className="tree-item"
+        className="flex items-center gap-2 p-1 cursor-pointer rounded hover:bg-gray-800"
         onClick={() =>
           item.type === "dir" ? toggle() : onFileClick(item)
         }
       >
         {item.type === "dir"
           ? open
-            ? <FaFolderOpen />
-            : <FaFolder />
-          : <FaFile />}
-
-        <div style={{ fontSize: 14 }}>
-          {highlight(item.name, search)}
-          {loading ? " •" : ""}
-        </div>
+            ? <FaFolderOpen className="text-yellow-400" />
+            : <FaFolder className="text-yellow-400" />
+          : <FaFile className="text-blue-400" />
+        }
+        <span className="text-sm">{highlight(item.name, search)}</span>
       </div>
 
       <AnimatePresence>
-        {open && filteredChildren && (
+        {open && filtered && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            style={{ overflow: "hidden" }}
-            className="tree-children"
+            initial={{ height: 0 }}
+            animate={{ height: "auto" }}
+            exit={{ height: 0 }}
+            className="ml-4 border-l border-gray-700"
           >
-            {filteredChildren.map((child) => (
+            {filtered.map(child => (
               <TreeLeaf
                 key={child.path}
                 item={child}
@@ -101,40 +83,17 @@ function TreeLeaf({ item, search, onFileClick }) {
   );
 }
 
-export default function FolderTree({
-  root,
-  search,
-  repoOwner,
-  repoName,
-  onFileClick
-}) {
-  if (!root) return null;
-
+export default function FolderTree({ root, search, onFileClick }) {
   return (
-    <div>
-    <br></br>
-      {/* 🔥 Dynamic Repo Header */}
-      <div className="repo-header">
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-          <path
-            fill="#fff"
-            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59..."
-          />
-        </svg>
-        <div>{repoOwner} / {repoName}</div>
-      </div>
-
-      {/* 📁 Folder Tree */}
-      <div style={{ marginTop: 8 }}>
-        {root.map((item) => (
-          <TreeLeaf
-            key={item.path}
-            item={item}
-            search={search}
-            onFileClick={onFileClick}
-          />
-        ))}
-      </div>
+    <div className="flex flex-col gap-1">
+      {root.map(item => (
+        <TreeLeaf
+          key={item.path}
+          item={item}
+          search={search}
+          onFileClick={onFileClick}
+        />
+      ))}
     </div>
   );
 }
