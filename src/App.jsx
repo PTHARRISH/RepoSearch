@@ -63,6 +63,7 @@ export default function App() {
 
             {/* Repo Search */}
             <div className="mb-3">
+              <label className="block mb-2">Type username/repository</label>
               <input
                 value={repoInput}
                 onChange={e => setRepoInput(e.target.value)}
